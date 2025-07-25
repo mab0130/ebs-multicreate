@@ -1,143 +1,181 @@
 # Create EBS
 
-Interactive Python scripts for creating and attaching EBS volumes to EC2 instances on AWS.
+## Bottom Line Up Front
 
-## Overview
+**What it does:** Automates creation and attachment of encrypted EBS volumes to EC2 instances with intelligent device naming and comprehensive configuration options.
 
-This toolkit includes two specialized scripts:
+**Two tools available:**
+- `createebs.py` - General purpose tool for any EBS volume needs
+- `create-sql-ebs.py` - Specialized tool for SQL Server RAID volume sets
 
-**createebs.py** - General purpose EBS volume creation tool
-**create-sql-ebs.py** - Purpose-built tool for SQL Server RAID volume sets
+**Key benefits:** No manual AWS console clicking, automatic encryption, proper device naming, RAID-optimized configurations for SQL Server, and session summaries.
 
-Both provide user-friendly command-line interfaces to:
-- Select AWS profiles from your local configuration
-- Choose from available EC2 instances  
-- Create encrypted EBS volumes with customizable specifications
-- Automatically attach volumes to the selected instance
+## Quick Start
 
-## Features
+### General EBS Volumes
+```bash
+python createebs.py
+# Creates 1-28 encrypted volumes with custom names
+# Supports all EBS types, automatic device naming
+# Option to create additional volumes on same instance
+```
 
-### Common Features (Both Scripts)
-- **Profile Selection**: Choose from available AWS profiles configured on your system
-- **Instance Discovery**: Lists all EC2 instances with their names and IDs
-- **Encryption**: All volumes created with AWS managed encryption (alias/aws/ebs)
-- **Volume Naming**: Automatic tagging with custom names
-- **Automatic Attachment**: Volumes are automatically attached to the selected instance
-- **Device Naming**: Uses Linux-style device names (/dev/xvdf, /dev/xvdg, etc.)
-- **Session Summary**: Shows volume counts before/after operations
-- **Continuous Operation**: Option to create additional volumes on same instance
+### SQL Server RAID Volumes  
+```bash
+python create-sql-ebs.py
+# Creates optimized volume sets: Data (4×250GB), Log (2×100GB), 
+# Temp (2×100GB), CommonFiles (1×50GB), Backup (2×500GB)
+# All gp3 with 3000 IOPS, ready for OS RAID configuration
+```
 
-### createebs.py Features
-- **Volume Types**: Supports all EBS volume types (gp2, gp3, io1, io2, st1, sc1, standard)
-- **Bulk Creation**: Create up to 10 volumes at once
-- **Custom Configuration**: Set size, IOPS, and throughput parameters per volume set
+## What Each Tool Does
 
-### create-sql-ebs.py Features
-- **RAID-Optimized**: Creates multiple disks per volume type for OS-level RAID striping
-- **SQL Server Defaults**: Pre-configured for typical SQL workloads
-- **Volume Types**: Data (4×250GB), Log (2×100GB), Temp (2×100GB), CommonFiles (1×50GB), Backup (2×500GB)
-- **Individual Configuration**: Customize disk count, size, EBS type, and IOPS per volume type
-- **Performance Tuning**: gp3 volumes with 3000 IOPS defaults for optimal SQL performance
+### createebs.py - General Purpose Tool
+Creates 1-28 EBS volumes with:
+- **Any EBS type** (gp2, gp3, io1, io2, st1, sc1, standard)
+- **Custom sizing** (1-16384 GiB per volume)  
+- **Custom naming** with automatic tagging
+- **Performance tuning** (IOPS/throughput for applicable types)
+- **Continuous operation** - create multiple sets on same instance
+- **Exit anytime** with `*` command
 
-## Requirements
+**Example Output:**
+```
+Selected Instance: i-1234567890abcdef0 in AZ: us-east-1a
+Currently attached volumes: 2
 
-- Python 3.x
-- boto3 library
-- AWS credentials configured (via AWS CLI, environment variables, or IAM roles)
+Creating 3 volumes named "WebApp-Storage"...
+Created volume vol-abc123 with name 'WebApp-Storage-1'
+Created volume vol-def456 with name 'WebApp-Storage-2' 
+Created volume vol-ghi789 with name 'WebApp-Storage-3'
 
-## Installation
+=== SUMMARY ===
+Instance: i-1234567890abcdef0
+Original volumes attached: 2
+New volumes created: 3
+Total volumes now attached: 5
+```
 
-1. Ensure you have Python 3.x installed
-2. Install the required dependency:
-   ```bash
-   pip install boto3
-   ```
+### create-sql-ebs.py - SQL Server RAID Tool
+Creates optimized volume sets for SQL Server with intelligent defaults:
 
-## Usage
+| Volume Set | Default Config | Purpose |
+|------------|----------------|---------|
+| **SQL-Data** | 4 × 250 GiB gp3 @ 3000 IOPS | Database files (.mdf) |
+| **SQL-Log** | 2 × 100 GiB gp3 @ 3000 IOPS | Transaction logs (.ldf) |
+| **SQL-Temp** | 2 × 100 GiB gp3 @ 3000 IOPS | TempDB files |
+| **SQL-CommonFiles** | 1 × 50 GiB gp3 @ 3000 IOPS | Shared components |
+| **SQL-Backup** | 2 × 500 GiB gp3 @ 3000 IOPS | Database backups |
 
-### General Purpose EBS Creation
+**Example Output:**
+```
+Creating 4 disk(s) for SQL-Data...
+Created volume vol-data1 with name 'SQL-Data-Disk1' (250 GiB)
+Created volume vol-data2 with name 'SQL-Data-Disk2' (250 GiB)
+Created volume vol-data3 with name 'SQL-Data-Disk3' (250 GiB)
+Created volume vol-data4 with name 'SQL-Data-Disk4' (250 GiB)
+
+RAID Volume Sets Created:
+  SQL-Data: 4 disk(s)
+    - SQL-Data-Disk1
+    - SQL-Data-Disk2
+    - SQL-Data-Disk3
+    - SQL-Data-Disk4
+  SQL-Log: 2 disk(s)
+  SQL-Temp: 2 disk(s)
+  SQL-CommonFiles: 1 disk(s)
+  SQL-Backup: 2 disk(s)
+
+Ready for RAID configuration in the OS!
+```
+
+## Installation & Setup
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/mab0130/ebs-multicreate.git
+cd ebs-multicreate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Ensure AWS credentials are configured
+aws configure  # or use environment variables/IAM roles
+```
+
+## How to Use
+
+### For General EBS Volumes
 ```bash
 python createebs.py
 ```
+**Interactive prompts:**
+1. Select AWS profile → Choose from your configured profiles
+2. Select EC2 instance → Pick target instance (shows current volume count)
+3. Choose EBS type → gp2, gp3, io1, io2, st1, sc1, standard
+4. Set volume count → 1-28 volumes per batch
+5. Set volume size → 1-16384 GiB per volume
+6. Enter volume name → Used for tagging (auto-numbered if multiple)
+7. Configure performance → IOPS/throughput for applicable types
+8. Continue or exit → Option to create more volumes on same instance
 
-The script will guide you through:
-1. **Profile Selection**: Choose an AWS profile from your configured profiles
-2. **Instance Selection**: Select the target EC2 instance from the list
-3. **Volume Type**: Choose the EBS volume type
-4. **Volume Count**: Specify how many volumes to create (1-10)
-5. **Volume Size**: Set the size in GiB for each volume (1-16384)
-6. **Volume Name**: Enter a custom name for volume tagging
-7. **Performance Settings**: Configure IOPS and throughput for applicable volume types
+**Pro tip:** Type `*` at any prompt to exit gracefully
 
-### SQL Server RAID Volume Creation
+### For SQL Server RAID Volumes
 ```bash
 python create-sql-ebs.py
 ```
+**Interactive prompts:**
+1. Select AWS profile → Choose from your configured profiles  
+2. Select EC2 instance → Pick target instance
+3. Configure each volume set → Or press Enter to use optimized defaults:
+   - **SQL-Data**: 4 disks × 250 GiB = 1TB RAID set
+   - **SQL-Log**: 2 disks × 100 GiB = 200GB RAID set
+   - **SQL-Temp**: 2 disks × 100 GiB = 200GB RAID set  
+   - **SQL-CommonFiles**: 1 disk × 50 GiB = 50GB single disk
+   - **SQL-Backup**: 2 disks × 500 GiB = 1TB RAID set
 
-The script will guide you through:
-1. **Profile Selection**: Choose an AWS profile from your configured profiles
-2. **Instance Selection**: Select the target EC2 instance from the list
-3. **Volume Configuration**: For each SQL volume type (Data, Log, Temp, CommonFiles, Backup):
-   - Number of disks for RAID striping (1-10)
-   - Size per disk in GiB (1-16384)
-   - EBS volume type (gp2, gp3, io1, io2, st1, sc1)
-   - IOPS per disk (for applicable types)
-   - Throughput per disk (for gp3)
+**Result:** Ready-to-configure RAID volume sets with proper naming for OS-level striping
 
-## Volume Types
+## Key Features
 
-- **gp2**: General Purpose SSD (previous generation)
-- **gp3**: General Purpose SSD (current generation)
-- **io1**: Provisioned IOPS SSD (previous generation)
-- **io2**: Provisioned IOPS SSD (current generation)
-- **st1**: Throughput Optimized HDD
-- **sc1**: Cold HDD
-- **standard**: Magnetic volumes (previous generation)
+### Security & Best Practices
+- ✅ **Automatic encryption** using AWS managed keys (alias/aws/ebs)
+- ✅ **No hardcoded credentials** - uses your existing AWS configuration
+- ✅ **Intelligent device naming** - automatically finds available `/dev/xvd*` devices
+- ✅ **Safe exit** - type `*` at any prompt to quit gracefully
 
-## Performance Configuration
+### User Experience  
+- ✅ **Current state visibility** - shows existing volume count before starting
+- ✅ **Session summaries** - reports before/after volume counts and what was created
+- ✅ **Continuous operation** - create multiple volume sets without restarting
+- ✅ **Smart defaults** - SQL tool has production-ready configurations built-in
+- ✅ **Input validation** - prevents invalid configurations and provides clear error messages
 
-For high-performance volume types:
-- **io1/io2**: IOPS configuration required
-- **gp3**: Optional IOPS and throughput configuration
+## Technical Details
 
-## Device Naming
+### Supported EBS Types
+| Type | Description | Use Case |
+|------|-------------|----------|
+| `gp3` | General Purpose SSD (latest) | Balanced price/performance |
+| `gp2` | General Purpose SSD | Legacy applications |
+| `io1/io2` | Provisioned IOPS SSD | High IOPS requirements |
+| `st1` | Throughput Optimized HDD | Big data, data warehouses |
+| `sc1` | Cold HDD | Infrequent access |
 
-Volumes are attached using Linux device names starting from `/dev/xvdf` and incrementing sequentially (e.g., `/dev/xvdg`, `/dev/xvdh`, etc.).
+### Device Naming Convention
+- Volumes attach to `/dev/xvdf`, `/dev/xvdg`, `/dev/xvdh`, etc.
+- Script automatically detects used devices and assigns next available
+- RAID volumes named with `-Disk1`, `-Disk2` suffixes for easy identification
 
-## SQL Server Volume Defaults
+### Volume Limits
+- **createebs.py**: 1-28 volumes per batch
+- **create-sql-ebs.py**: 1-10 disks per volume type (typically 11 total volumes)
+- **Size range**: 1-16384 GiB per volume
 
-The create-sql-ebs.py script includes optimized defaults for SQL Server workloads:
+## Troubleshooting
 
-| Volume Type | Default Disks | Size per Disk | Total Size | IOPS per Disk | Purpose |
-|-------------|---------------|---------------|------------|---------------|---------|
-| SQL-Data | 4 | 250 GiB | 1 TB | 3000 | Database files (.mdf) |
-| SQL-Log | 2 | 100 GiB | 200 GB | 3000 | Transaction logs (.ldf) |
-| SQL-Temp | 2 | 100 GiB | 200 GB | 3000 | TempDB files |
-| SQL-CommonFiles | 1 | 50 GiB | 50 GB | 3000 | Shared components |
-| SQL-Backup | 2 | 500 GiB | 1 TB | 3000 | Database backups |
-
-All defaults use gp3 volumes for optimal cost/performance balance.
-
-## Error Handling
-
-Both scripts include validation for:
-- Invalid profile/instance selections
-- Volume count limits (1-10)
-- Size constraints (1-16384 GiB)
-- Numeric input validation
-- EBS type validation
-
-## Security Considerations
-
-- All volumes created with AWS managed encryption (alias/aws/ebs)
-- Uses existing AWS credentials and profiles
-- No hardcoded credentials in the scripts
-- Follows AWS SDK best practices for authentication
-
-## Notes
-
-- Volumes are created in the same Availability Zone as the selected instance
-- Scripts wait for each volume to become available before attaching
-- All volumes are attached sequentially to ensure proper device naming
-- Multi-disk volumes are named with -Disk1, -Disk2, etc. for RAID identification
-- Both scripts provide session summaries showing before/after volume counts
+**"No AWS profiles found"** → Run `aws configure` to set up credentials  
+**"No EC2 instances found"** → Check your AWS region and instance states  
+**"No available device names"** → Instance may have maximum volumes attached  
+**Script hangs during creation** → Check AWS service status and network connectivity
